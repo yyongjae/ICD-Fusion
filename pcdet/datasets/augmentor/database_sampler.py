@@ -465,7 +465,7 @@ class DataBaseSampler(object):
             if self.limit_whole_scene:
                 num_gt = np.sum(class_name == gt_names)
                 sample_group['sample_num'] = str(int(self.sample_class_num[class_name]) - num_gt)
-            # 修改
+
             if self.sto_gt:
                 sample_group['sample_num'] = str(random.randint(1, int(self.sample_class_num[class_name])))
             if int(sample_group['sample_num']) > 0:
