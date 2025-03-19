@@ -84,7 +84,6 @@ class NuScenesDataset(DatasetTemplate):
 
     def get_sweep(self, sweep_info):
         """
-        读取单个sweep中的 LiDAR 数据，移除自车的点，并在需要时应用坐标变换,sweep_info['time_lag']记录时间
         Args: 
             sweep_info
         Return:
@@ -109,7 +108,6 @@ class NuScenesDataset(DatasetTemplate):
 
     def get_lidar_with_sweeps(self, index, max_sweeps=1):
         '''
-        当前帧的 LiDAR 数据中提取点云, 并随机选择若干个历史sweeps, 将它们合并成一个包含位置和时间的点云数据集.
         Args:
             index: used for dataload.
             max_sweeps
@@ -135,9 +133,6 @@ class NuScenesDataset(DatasetTemplate):
         return points
 
     def crop_image(self, input_dict):
-        '''
-        对图像数据进行缩放和裁剪处理, process the image size and record the processed images infos
-        '''
         W, H = input_dict["ori_shape"]
         imgs = input_dict["camera_imgs"]
         img_process_infos = []

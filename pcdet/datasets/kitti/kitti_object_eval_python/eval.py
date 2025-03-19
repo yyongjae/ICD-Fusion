@@ -118,7 +118,6 @@ def bev_box_overlap(boxes, qboxes, criterion=-1):
     return riou
 
 
-# 主要的问题点
 @numba.jit(nopython=True, parallel=True)
 # @numba.jit(nopython=True)
 def d3_box_overlap_kernel(boxes, qboxes, rinc, criterion=-1):
