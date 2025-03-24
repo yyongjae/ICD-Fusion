@@ -10,7 +10,7 @@ This is the official codes for ["Efficient Multi-Modal 3D Object Detector via In
 
 ## Framework:
 <p align="center">
-  <img src="docs/framework.png" width="95%" height="320">
+  <img src="docs/framework1.png" width="95%" height="320">
 </p>
 <p align="center"><b>Framework:</b> The overview of our proposed method which consists of Instance-level Contrastive Distillation (ICD) and Cross Linear Attention Fusion Module (CLFM)</p>
 
