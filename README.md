@@ -29,7 +29,7 @@ This is the official codes for ["Efficient Multi-Modal 3D Object Detector via In
 ## Installation
 1.  Prepare for the running environment.
 
-    You can  follow the installation steps in [OpenPCDet](https://github.com/open-mmlab/OpenPCDet) or download our [conda environment pack]() for easy deployment:
+    You can  follow the installation steps in [OpenPCDet](https://github.com/open-mmlab/OpenPCDet) or download our [conda environment pack](https://pan.baidu.com/s/1uvVdnXWiU57W0tTQeFzMXg?pwd=9264) for easy deployment:
 
     ```
     cd /user/anaconda3/envs
