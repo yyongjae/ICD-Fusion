@@ -92,7 +92,7 @@ This is the official codes for ["Efficient Multi-Modal 3D Object Detector via In
 ## Getting Started
 0. Preparation
 
-    Following the instructions offered by [OpenPCDet](https://github.com/open-mmlab/OpenPCDet), we pretrained Voxel-RCNN as teacher model in our ICD framework. You can directly download the pretrained weights [here](). The choice of the teacher model remains flexible, as long as the encoder's output maintains the same size with student model. Following [BEVFusion](https://github.com/mit-han-lab/bevfusion), you also need to download [SwinTransformer]() pretrained model as the image encoder in our dual-branch encoder.
+    Following the instructions offered by [OpenPCDet](https://github.com/open-mmlab/OpenPCDet), we pretrained Voxel-RCNN as teacher model in our ICD framework. You can directly download the pretrained weights [here](https://drive.google.com/file/d/1LAgoOVOC5I7DQY7cGjHhylQ4cgHBhtYf/view?usp=sharing) or pretrain a Lidar-based teacher model following VoxelBackBone8x, ResVoxelBackBone pipelines in OpenPCDet. The choice of the teacher model is flexible, as long as the encoder's output maintains the same size with student model. Following [BEVFusion](https://github.com/mit-han-lab/bevfusion), you also need to download [SwinTransformer](https://drive.google.com/file/d/1pi-cNsO1yOPdPsY2fkKo9lVDtpmYSJ5w/view?usp=sharing) pretrained model as the image encoder in our dual-branch encoder.
 
 1. Training
     ```
