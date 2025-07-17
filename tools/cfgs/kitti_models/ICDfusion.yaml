@@ -287,7 +287,7 @@ MODEL:
             NMS_POST_MAXSIZE: 500    
 
 OPTIMIZATION:
-    BATCH_SIZE_PER_GPU: 1
+    BATCH_SIZE_PER_GPU: 2
     NUM_EPOCHS: 60
 
     OPTIMIZER: adam_onecycle

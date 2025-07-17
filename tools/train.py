@@ -198,6 +198,7 @@ def main():
                 % (cfg.EXP_GROUP_PATH, cfg.TAG, args.extra_tag))
 
     train_model(
+        args,
         model,
         optimizer,
         train_loader,

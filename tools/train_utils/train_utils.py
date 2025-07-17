@@ -6,6 +6,7 @@ import time
 import glob
 from torch.nn.utils import clip_grad_norm_
 from pcdet.utils import common_utils, commu_utils
+from eval_utils.eval_utils import eval_one_epoch
 import wandb
 
 
@@ -158,7 +159,7 @@ def train_one_epoch(model, optimizer, train_loader, model_func, lr_scheduler, ac
     return accumulated_iter
 
 
-def train_model(model, optimizer, train_loader, val_loader, model_func, lr_scheduler, optim_cfg,
+def train_model(args, model, optimizer, train_loader, val_loader, model_func, lr_scheduler, optim_cfg,
                 start_epoch, total_epochs, start_iter, rank, tb_log, ckpt_save_dir, train_sampler=None,
                 lr_warmup_scheduler=None, ckpt_save_interval=1, max_ckpt_save_num=50,
                 merge_all_iters_to_one_epoch=False, use_amp=False,
@@ -204,14 +205,11 @@ def train_model(model, optimizer, train_loader, val_loader, model_func, lr_sched
                 show_gpu_stat=show_gpu_stat,
                 use_amp=use_amp
             )
-
             ################  validation  ################
             if rank == 0:
                 model.eval()
                 with torch.no_grad():
-                    val_ret_dict = eval_one_epoch(
-                        cfg, model, val_loader, logger=logger, dist_test=False
-                    )
+                    val_ret_dict = eval_one_epoch(cfg=cfg, args=args, model=model, dataloader=val_loader, epoch_id=cur_epoch, logger=logger, dist_test=False, result_dir='/home/yongjae/4drkd/ICD-Fusion/output/kitti_models/ICDfusion/default')
                 model.train()
                 wandb.log({f'val/{k}': v for k,v in val_ret_dict.items()},
                         step=accumulated_iter)
