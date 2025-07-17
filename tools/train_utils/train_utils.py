@@ -211,7 +211,7 @@ def train_model(args, model, optimizer, train_loader, val_loader, model_func, lr
                 with torch.no_grad():
                     val_ret_dict = eval_one_epoch(cfg=cfg, args=args, model=model, dataloader=val_loader, epoch_id=cur_epoch, logger=logger, dist_test=False, result_dir='/home/yongjae/4drkd/ICD-Fusion/output/kitti_models/ICDfusion/default')
                 model.train()
-                wandb.log(val_ret_dict, step=accumulated_iter)
+                wandb.log({f'val/{k}': v for k, v in val_ret_dict.items()}, step=cur_epoch)
 
             # save trained model
             trained_epoch = cur_epoch + 1
