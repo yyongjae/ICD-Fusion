@@ -460,7 +460,7 @@ if __name__ == '__main__':
         dataset_cfg = EasyDict(yaml.safe_load(open(sys.argv[2])))
         # ROOT_DIR = (Path(__file__).resolve().parent / '../../../').resolve()
 
-        ROOT_DIR = Path('/path/to/kitti_datset')
+        ROOT_DIR = Path('/home/yongjae/4drkd/ICD-Fusion/data/kitti')
         create_kitti_infos(
             dataset_cfg=dataset_cfg,
             class_names=['Car', 'Pedestrian', 'Cyclist'],

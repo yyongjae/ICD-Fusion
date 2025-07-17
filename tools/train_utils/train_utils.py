@@ -6,6 +6,7 @@ import time
 import glob
 from torch.nn.utils import clip_grad_norm_
 from pcdet.utils import common_utils, commu_utils
+import wandb
 
 
 def train_one_epoch(model, optimizer, train_loader, model_func, lr_scheduler, accumulated_iter, optim_cfg,
@@ -116,6 +117,16 @@ def train_one_epoch(model, optimizer, train_loader, model_func, lr_scheduler, ac
                             )
                     )
                     
+                    log_dict = {
+                        'meta_data/learning_rate': cur_lr,
+                        'timing/forward_time': forward_time.val,
+                        'timing/data_time': data_time.val,
+                        'timing/batch_time': batch_time.val,
+                        'train/loss': loss.item(),
+                    }
+                    log_dict.update({f"train/{k}": v for k, v in tb_dict.items() if v is not None})
+                    wandb.log(log_dict, step=accumulated_iter)
+                    
                     if show_gpu_stat and accumulated_iter % (3 * logger_iter_interval) == 0:
                         # To show the GPU utilization, please install gpustat through "pip install gpustat"
                         gpu_info = os.popen('gpustat').read()
@@ -147,7 +158,7 @@ def train_one_epoch(model, optimizer, train_loader, model_func, lr_scheduler, ac
     return accumulated_iter
 
 
-def train_model(model, optimizer, train_loader, model_func, lr_scheduler, optim_cfg,
+def train_model(model, optimizer, train_loader, val_loader, model_func, lr_scheduler, optim_cfg,
                 start_epoch, total_epochs, start_iter, rank, tb_log, ckpt_save_dir, train_sampler=None,
                 lr_warmup_scheduler=None, ckpt_save_interval=1, max_ckpt_save_num=50,
                 merge_all_iters_to_one_epoch=False, use_amp=False,
@@ -193,6 +204,17 @@ def train_model(model, optimizer, train_loader, model_func, lr_scheduler, optim_
                 show_gpu_stat=show_gpu_stat,
                 use_amp=use_amp
             )
+
+            ################  validation  ################
+            if rank == 0:
+                model.eval()
+                with torch.no_grad():
+                    val_ret_dict = eval_one_epoch(
+                        cfg, model, val_loader, logger=logger, dist_test=False
+                    )
+                model.train()
+                wandb.log({f'val/{k}': v for k,v in val_ret_dict.items()},
+                        step=accumulated_iter)
 
             # save trained model
             trained_epoch = cur_epoch + 1

@@ -12,34 +12,17 @@ def gen_dx_bx(xbound, ybound, zbound):
     return dx, bx, nx
 
 class NTXentLoss(nn.Module):
-    def __init__(self, temperature=0.5, eps=1e-7):
+    def __init__(self, temperature=0.5):
         super(NTXentLoss, self).__init__()
-        self.temperature = temperature 
-        self.eps = eps
+        self.temperature = temperature
+        self.eps = 1e-7
 
-    def forward(self, embeddings, labels):
-        embeddings = F.normalize(embeddings, p=2, dim=1)
-        sim_matrix = torch.matmul(embeddings, embeddings.T)  # (M, M)
-
-        logits = sim_matrix / self.temperature
-        labels = labels.view(-1)
-        pos_mask = labels.unsqueeze(0).eq(labels.unsqueeze(1))  # (M, M)
-        diag_mask = torch.eye(logits.size(0), dtype=torch.bool, device=logits.device)
-        pos_mask = pos_mask & ~diag_mask                        # (M, M) 중 대각선 False
-
-        exp_logits = torch.exp(logits) * (~diag_mask)           # (M, M)
-
-        denom = exp_logits.sum(dim=1)                          # (M,)
-
-        pos_sum = (exp_logits * pos_mask.float()).sum(dim=1)    # (M,)
-
-        valid = pos_sum > 0
-        if valid.sum() == 0:
-            return torch.tensor(0.0, device=embeddings.device, requires_grad=True)
-
-        loss = -torch.log((pos_sum[valid] + self.eps) / (denom[valid] + self.eps))
-
-        return loss.mean()
+    def forward(self, x1, x2):
+        sim_matrix = torch.matmul(x1, x2.T) / self.temperature
+        sim_matrix = sim_matrix - torch.max(sim_matrix, dim=-1, keepdim=True)[0]
+        labels = torch.arange(x1.size(0)).to(x1.device)
+        loss = nn.CrossEntropyLoss()((sim_matrix + self.eps), labels)
+        return loss
 
 class CDLSSTransform(nn.Module):
     def __init__(self, model_cfg):
@@ -286,63 +269,11 @@ class CDLSSTransform(nn.Module):
         img_embeddings = pooled_features1_batch.view(B*N, 64, 2, 9, 9).max(dim=2)[0]  # max across dim=2
 
         bev_embeddings_flat = img_embeddings.reshape(B*N, -1)
-        gt_embeddings_flat  = gt_embeddings.reshape(B*N, -1)
-        bev_embeddings_flat = F.normalize(bev_embeddings_flat, dim=1)
-        gt_embeddings_flat  = F.normalize(gt_embeddings_flat, dim=1)
-
-        gt_boxes = self.forward_ret_dict['gt_boxes']      # (B, N, 7) 형태
-        gt_classes = gt_boxes[..., -1].long().view(-1)      # (B*N,)
-        embeddings_all = torch.cat([bev_embeddings_flat, gt_embeddings_flat], dim=0)  # (2*B*N, feat_dim)
-        labels_all     = torch.cat([gt_classes, gt_classes], dim=0)                   # (2*B*N,)
-
-        # ═══════════════════════════════════════════════════════════════════════════════
-        if not hasattr(self, '_debug_counter'):
-            self._debug_counter = 0
-        self._debug_counter += 1
-        
-        if self._debug_counter % 50 == 1:
-            print(f"\n[DEBUG #{self._debug_counter}] Positive Pair Analysis:")
-            print(f"  - Batch size (B): {B}, Objects per batch (N): {N}")
-            print(f"  - Total embeddings: {embeddings_all.shape[0]} (should be 2*B*N = {2*B*N})")
-            print(f"  - Embedding dimension: {embeddings_all.shape[1]}")
-            print(f"  - GT classes shape: {gt_classes.shape}, Labels all shape: {labels_all.shape}")
-            
-            # 클래스 분포 확인
-            unique_classes, class_counts = torch.unique(labels_all, return_counts=True)
-            print(f"  - Unique classes: {unique_classes.tolist()}")
-            print(f"  - Class counts: {class_counts.tolist()}")
-            
-            sample_size = min(5, embeddings_all.shape[0])
-            sample_labels = labels_all[:sample_size]
-            pos_mask_sample = sample_labels.unsqueeze(0).eq(sample_labels.unsqueeze(1))
-            diag_mask_sample = torch.eye(sample_size, dtype=torch.bool, device=embeddings_all.device)
-            pos_mask_sample = pos_mask_sample & ~diag_mask_sample
-            
-            print(f"  - Sample labels (first {sample_size}): {sample_labels.tolist()}")
-            print(f"  - Sample positive mask (excluding diagonal):")
-            for i in range(sample_size):
-                row_str = "    " + " ".join(["1" if pos_mask_sample[i,j] else "0" for j in range(sample_size)])
-                print(f"      Row {i} (class {sample_labels[i].item()}): {row_str}")
-            
-            # 각 클래스별 positive pair 개수 확인
-            print(f"  - Positive pairs per class:")
-            for cls_id in unique_classes:
-                cls_mask = (labels_all == cls_id)
-                cls_count = cls_mask.sum().item()
-                # 각 클래스에서 가능한 positive pair 수: n*(n-1) (자기 자신 제외)
-                possible_pairs = cls_count * (cls_count - 1) if cls_count > 1 else 0
-                print(f"      Class {cls_id.item()}: {cls_count} embeddings → {possible_pairs} positive pairs")
-            
-            # Cross-modal pair 확인 (BEV vs GT)
-            bev_labels = labels_all[:B*N]  # 첫 번째 절반 (BEV)
-            gt_labels = labels_all[B*N:]   # 두 번째 절반 (GT)
-            cross_modal_matches = (bev_labels == gt_labels).sum().item()
-            print(f"  - Cross-modal matches (BEV vs GT same class): {cross_modal_matches}/{B*N}")
-            print(f"[DEBUG #{self._debug_counter}] End of Positive Pair Analysis\n")
-        # ═══════════════════════════════════════════════════════════════════════════════
-
+        gt_embeddings_flat = gt_embeddings.reshape(B*N, -1)
+        bev_embeddings_flat = F.normalize(bev_embeddings_flat, dim=-1)
+        gt_embeddings_flat = F.normalize(gt_embeddings_flat, dim=-1)
         contrastive_loss_fn = NTXentLoss(temperature=0.5)
-        loss = contrastive_loss_fn(embeddings_all, labels_all)
+        loss = contrastive_loss_fn(bev_embeddings_flat, gt_embeddings_flat)
 
         tb_dict.update({'DDLSS_loss': loss.item()})
         return loss, tb_dict
@@ -431,7 +362,6 @@ class CDLSSTransform(nn.Module):
             self.forward_ret_dict['gt_bev'] = batch_dict['gt_bev_features']
             self.forward_ret_dict['img_bev'] = x
             self.forward_ret_dict['bev_boxes'] = bboxes
-            self.forward_ret_dict['gt_boxes'] = gt_boxes  # <--- DEBUG/class extraction용 저장
         # convert bev features from (b, c, x, y) to (b, c, y, x)
         batch_dict['spatial_features_img'] = x
         return batch_dict

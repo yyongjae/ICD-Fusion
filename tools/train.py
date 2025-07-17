@@ -1,3 +1,4 @@
+from math import exp
 import _init_path
 import argparse
 import datetime
@@ -17,7 +18,7 @@ from pcdet.utils import common_utils
 from train_utils.optimization import build_optimizer, build_scheduler
 from train_utils.train_utils import train_model
 
-
+import wandb
 def parse_config():
     parser = argparse.ArgumentParser(description='arg parser')
     parser.add_argument('--cfg_file', type=str, default=None, help='specify the config for training')
@@ -51,6 +52,8 @@ def parse_config():
     parser.add_argument('--use_amp', action='store_true', help='use mix precision training')
     
 
+    parser.add_argument('--exp', type=str, default='baseline')
+
     args = parser.parse_args()
 
     cfg_from_yaml_file(args.cfg_file, cfg)
@@ -66,8 +69,19 @@ def parse_config():
 
 
 def main():
-    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
     args, cfg = parse_config()
+
+    now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    project = "icd-fusion"
+    name = "ICDfusion"
+    wandb.init(
+        entity='4DR_siu',
+        project=project, 
+        name=f"{name}_{args.exp}_{now_str}",
+        config={**vars(args), "cfg_file": args.cfg_file},
+        dir=str(cfg.ROOT_DIR / 'output' / cfg.EXP_GROUP_PATH / cfg.TAG / args.extra_tag))
+        
     if args.launcher == 'none':
         dist_train = False
         total_gpus = 1
@@ -129,6 +143,13 @@ def main():
         total_epochs=args.epochs,
         seed=666 if args.fix_random_seed else None
     )
+    val_set, val_loader, _ = build_dataloader(
+        dataset_cfg=cfg.DATA_CONFIG,
+        class_names=cfg.CLASS_NAMES,
+        batch_size=args.batch_size,
+        dist=dist_train, workers=args.workers,
+        logger=logger, training=False
+    )
 
     model = build_network(model_cfg=cfg.MODEL, num_class=len(cfg.CLASS_NAMES), dataset=train_set)
     if args.sync_bn:
@@ -180,6 +201,7 @@ def main():
         model,
         optimizer,
         train_loader,
+        val_loader,
         model_func=model_fn_decorator(),
         lr_scheduler=lr_scheduler,
         optim_cfg=cfg.OPTIMIZATION,
@@ -217,6 +239,7 @@ def main():
         batch_size=args.batch_size,
         dist=dist_train, workers=args.workers, logger=logger, training=False
     )
+    
     eval_output_dir = output_dir / 'eval' / 'eval_with_train'
     eval_output_dir.mkdir(parents=True, exist_ok=True)
     args.start_epoch = max(args.epochs - 30, 0)  # Only evaluate the last args.num_epochs_to_eval epochs
